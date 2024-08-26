@@ -1,0 +1,26 @@
+from setuptools import setup, find_packages
+
+setup(
+    name='messor',  # Project name
+    version='0.1.0',
+    description='An execution framework for i/o heavy task with memory persistence and concurrency',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    author='Your Name',
+    author_email='contact@jhaabhi.com',
+    url='https://github.com/jhaabh/messor',  # Your GitHub repo link
+    packages=find_packages(),  # Automatically finds all packages in the messor directory
+    include_package_data=True,  # Includes additional files like README and LICENSE
+    install_requires=[],  # Add external dependencies here, e.g., 'requests'
+    extras_require={
+        'dev': [
+            'pytest>=6.0',  # Adds pytest as a development dependency
+        ],
+    },
+    python_requires='>=3.6',  # Minimum Python version
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+    ],
+)
