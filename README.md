@@ -183,19 +183,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 ---
 
 Happy Harvesting with **Messor**! 🌾
-```
-
-### Summary of Changes and Features in `README.md`:
-1. **Project Overview**: Introduces Messor, what it does, and how it's useful.
-2. **Installation**: Includes `pip install messor` instructions.
-3. **Usage**:
-   - Defines how to set up tasks, run them using the `LocalThreadedExecutor`, and interact with memory for task persistence.
-   - Demonstrates how to handle failures and how to resume tasks.
-4. **Advanced Features**:
-   - Shows how to define stop conditions to halt execution.
-   - Includes instructions on how to implement custom memory backends.
-5. **Testing**: Explains how to run the test suite with pytest.
-6. **Contributing**: Encourages contributions and shows how to set up a local development environment.
-7. **License**: Includes a note on licensing.
-
 This `README.md` is designed to be user-friendly and provide enough detail to guide users through installation, setup, and basic usage of the Messor framework. Let me know if this works for you or if you'd like to make any further adjustments!
