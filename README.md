@@ -1,6 +1,6 @@
 # Kofu
 
-[![PyPI version](https://badge.fury.io/py/kofu.svg)](https://badge.fury.io/py/kofu)
+[![PyPI version](https://img.shields.io/pypi/v/kofu.svg)](https://pypi.org/project/kofu)
 [![Python Versions](https://img.shields.io/pypi/pyversions/kofu.svg)](https://pypi.org/project/kofu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
