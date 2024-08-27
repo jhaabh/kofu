@@ -83,7 +83,7 @@ class SQLiteMemory(Memory):
 
             # TODO: Make this more optimized
             for task_id, _, result, error in statuses:
-                if result:
+                if result is not None:
                     self.conn.execute('''
                         INSERT OR REPLACE INTO task_result (task_id, result) VALUES (?, ?)
                     ''', (task_id, json.dumps(result)))

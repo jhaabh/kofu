@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional
 from tqdm import tqdm  # Import tqdm for progress bar
-import os
 from kofu.memory.sqlite_memory import SQLiteMemory  # Import SQLiteMemory
+from kofu.tasks import SimpleFn
 
 class LocalThreadedExecutor:
     def __init__(self, tasks: List, memory=None, path: Optional[str] = None, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None, retry: int = 1):
@@ -86,7 +86,10 @@ class LocalThreadedExecutor:
                         self.memory.update_task_statuses([(task.get_id(), 'completed', result, None)])
                         completed_tasks += 1
                     except Exception as e:
-                        self.memory.update_task_statuses([(task.get_id(), 'failed', None, str(e))])
+                        exception_type = type(e).__name__
+                        exception_message = str(e)
+                        error_info = f"{exception_type}: {exception_message}"
+                        self.memory.update_task_statuses([(task.get_id(), 'failed', None, error_info)])
                         failed_tasks += 1
 
                     # Update progress bar
@@ -123,16 +126,29 @@ class LocalThreadedExecutor:
         Ensure that all tasks are registered in the memory with a `pending` status if they are not already defined.
         This method is idempotent and will not overwrite existing tasks.
         """
-        # Prepare task definitions that are missing in memory
         task_definitions = []
+
         for task in self.tasks:
             task_id = task.get_id()
             try:
                 # Check if the task already exists in memory
                 self.memory.get_task_status(task_id)
             except KeyError:
-                # Task not found, add it as a pending task
-                task_definitions.append((task_id, {"chapter": getattr(task, "chapter", None), "shloka": getattr(task, "shloka", None)}))
+                # For SimpleFn tasks, we store function name and args; otherwise, store task type and other info.
+                if isinstance(task, SimpleFn):
+                    task_data = {
+                        "fn_name": task.fn.__name__,
+                        "args": task.args,
+                        "kwargs": task.kwargs
+                    }
+                else:
+                    # Generic task data (optional, based on your task implementation)
+                    task_data = {
+                        "task_type": type(task).__name__
+                    }
+                
+                # Store task definition with ID and data
+                task_definitions.append((task_id, task_data))
 
         if task_definitions:
             self.memory.store_tasks(task_definitions)

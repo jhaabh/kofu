@@ -40,7 +40,7 @@ def test_task_execution_with_exceptions(sqlite_memory):
 
     # Check task_1 failed and task_2 succeeded
     assert sqlite_memory.get_task_status("task_1") == "failed"
-    assert sqlite_memory.get_failed_tasks() == [("task_1", "Task task_1 failed")]
+    assert sqlite_memory.get_failed_tasks() == [("task_1", "Exception: Task task_1 failed")]
     assert sqlite_memory.get_task_status("task_2") == "completed"
     assert sqlite_memory.get_task_result("task_2") == "Processed http://example.org"
 
