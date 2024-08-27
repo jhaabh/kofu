@@ -1,11 +1,17 @@
 import sqlite3
 import json
+import os
 from typing import List, Dict, Optional, Tuple
 from .memory_interface import Memory
 from threading import Lock
 
 class SQLiteMemory(Memory):
     def __init__(self, path: str):
+        # Ensure the directory exists
+        dir_path = os.path.dirname(path)
+        if dir_path and not os.path.exists(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
+
         self.conn = sqlite3.connect(path, check_same_thread=False)
         self.lock = Lock()  # Use a lock to ensure thread safety for write operations
         self._setup_db()

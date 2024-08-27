@@ -205,3 +205,21 @@ def test_get_task_status_not_found(sqlite_memory):
 def test_store_task_with_invalid_data(sqlite_memory):
     with pytest.raises(TypeError, match="Task data for task task_1 is not JSON serializable"):
         sqlite_memory.store_tasks([("task_1", set([1, 2, 3]))])  # Sets are not JSON serializable
+
+def test_auto_create_directories_for_sqlite_memory(tmp_path):
+    # Prepare a directory path inside tmp_path that doesn't exist yet
+    non_existent_dir = tmp_path / "non_existent_dir"
+    sqlite_file_path = non_existent_dir / "test_tasks.db"
+
+    # Ensure that the directory does not exist before initializing SQLiteMemory
+    assert not non_existent_dir.exists()
+
+    # Initialize SQLiteMemory with the non-existent directory path
+    memory = SQLiteMemory(path=str(sqlite_file_path))
+
+    # Check that the directory was automatically created
+    assert non_existent_dir.exists()
+
+    # Optional: Verify that we can now interact with SQLiteMemory (store a task)
+    memory.store_tasks([("task_1", {"data": "test"})])
+    assert memory.get_task_status("task_1") == "pending"
