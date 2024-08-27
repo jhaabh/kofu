@@ -35,6 +35,9 @@ class LocalThreadedExecutor:
         Run the tasks concurrently with a thread pool. Query memory for task status to skip completed tasks
         and stop execution if the stop_all_when condition is met.
         """
+        # Ensure all tasks are stored in memory before execution (idempotent)
+        self._initialize_tasks_in_memory()
+
         # Retrieve pending tasks from memory
         pending_task_ids = set(self.memory.get_pending_tasks())
         tasks_to_run = [task for task in self.tasks if task.get_id() in pending_task_ids]
@@ -91,4 +94,21 @@ class LocalThreadedExecutor:
             else:
                 raise e  # Raise the error if no retries are left
 
-        # return task()
+    def _initialize_tasks_in_memory(self):
+        """
+        Ensure that all tasks are registered in the memory with a `pending` status if they are not already defined.
+        This method is idempotent and will not overwrite existing tasks.
+        """
+        # Prepare task definitions that are missing in memory
+        task_definitions = []
+        for task in self.tasks:
+            task_id = task.get_id()
+            try:
+                # Check if the task already exists in memory
+                self.memory.get_task_status(task_id)
+            except KeyError:
+                # Task not found, add it as a pending task
+                task_definitions.append((task_id, {"chapter": getattr(task, "chapter", None), "shloka": getattr(task, "shloka", None)}))
+
+        if task_definitions:
+            self.memory.store_tasks(task_definitions)
