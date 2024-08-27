@@ -57,23 +57,23 @@ Kofu supports Python 3.7+.
 Here's a simple example to get you started with Kofu:
 
 ```python
-from kofu import LocalThreadedExecutor, SQLiteMemory, Task
+from kofu import LocalThreadedExecutor, SQLiteMemory, SimpleFn
 
-class ExampleTask(Task):
-    def __init__(self, task_id, data):
-        self.task_id = task_id
-        self.data = data
+# Define tasks using SimpleFn
+tasks = [
+    SimpleFn(task_id="Python_(programming_language)", fn=download_wikipedia_page, args=("Python_(programming_language)",)),
+    SimpleFn(task_id="Web_scraping", fn=download_wikipedia_page, args=("Web_scraping",)),
+    SimpleFn(task_id="Concurrency_(computer_science)", fn=download_wikipedia_page, args=("Concurrency_(computer_science)",))
+]
 
-    def get_id(self):
-        return self.task_id
+def download_wikipedia_page(page_name: str) -> str:
+    import requests
+    url = f"https://en.wikipedia.org/wiki/{page_name}"
+    response = requests.get(url)
+    return response.text[:100]  # Simulate task by returning first 100 characters of the page
 
-    def __call__(self):
-        # Simulate task execution
-        return f"Processed {self.data}"
-
-# Set up memory and tasks
+# Set up memory for task persistence
 memory = SQLiteMemory(path="tasks.db")
-tasks = [ExampleTask(f"task_{i}", f"data_{i}") for i in range(5)]
 
 # Run the executor
 executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2)
@@ -82,6 +82,32 @@ executor.run()
 # Check task statuses
 print(executor.status_summary())
 ```
+
+### Explanation:
+- **Tasks**: You can use `SimpleFn` to wrap simple functions as tasks. Here, we're downloading Wikipedia pages using the `download_wikipedia_page` function.
+- **SQLiteMemory**: This stores the task status and results, allowing tasks to resume on failures or interruptions.
+- **Executor**: The `LocalThreadedExecutor` runs tasks concurrently, with the option to set `max_concurrency` to control how many tasks run in parallel.
+
+### Key Concepts:
+
+1. **SimpleFn**: 
+   - `SimpleFn` allows you to easily create tasks from functions without needing to define a custom class.
+   - It requires a `task_id` (to uniquely identify the task) and a function (`fn`) along with its arguments (`args`).
+   - In this example, `download_wikipedia_page` is the function that fetches a Wikipedia page, and `task_id` is the name of the page.
+
+2. **SQLiteMemory**:
+   - `SQLiteMemory` provides persistence by storing task statuses and results in an SQLite database (`tasks.db` in this case).
+   - This ensures that you can resume or retry tasks after a failure or interruption without losing progress.
+
+3. **LocalThreadedExecutor**:
+   - This executor manages the execution of tasks concurrently using threads.
+   - You can control the level of concurrency by adjusting the `max_concurrency` parameter.
+   - It also ensures idempotency: running the same set of tasks will only process incomplete ones, and completed tasks are skipped.
+
+4. **Task Status Summary**:
+   - After running tasks, you can check their statuses (`completed`, `pending`, or `failed`) using `executor.status_summary()`.
+
+This example shows how simple it is to use Kofu for running concurrent tasks with built-in persistence. For more complex tasks, you can define custom classes with a `get_id()` method and a `__call__()` method.
 
 ## Detailed Usage
 
