@@ -1,186 +1,374 @@
 # Messor
 
-**Messor** (Latin for "Harvester") is a Python framework for managing and executing tasks with concurrency and persistence. It’s designed to handle I/O-heavy operations such as web scraping, LLM-based workflows, or any task that requires data collection across multiple steps or executions. 
+[![PyPI version](https://badge.fury.io/py/messor.svg)](https://badge.fury.io/py/messor)
+[![Python Versions](https://img.shields.io/pypi/pyversions/messor.svg)](https://pypi.org/project/messor/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Messor** (Latin for "Harvester") is a Python framework for managing and executing concurrent tasks with built-in persistence. It's designed for single-computer environments, particularly Colab notebooks, focusing on I/O-heavy operations such as web scraping and LLM-based workflows.
+
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Detailed Usage](#detailed-usage)
+- [Colab Usage](#colab-usage)
+- [LLM Prompting Example](#llm-prompting-example)
+- [Advanced Features](#advanced-features)
+- [Performance Considerations](#performance-considerations)
+- [Contributing](#contributing)
+- [Testing](#testing)
+- [TODO](#todo)
+- [License](#license)
+- [Contact](#contact)
 
 ## Features
 
-- **Local Threaded Execution**: Run tasks concurrently with Python threads.
-- **Task Resumption**: Automatically resume pending or failed tasks after interruptions or crashes.
-- **Memory Persistence**: Store task statuses and results in various backends like SQLite or custom memory systems.
-- **Stop Conditions**: Gracefully stop execution based on custom conditions (e.g., rate-limiting, API blocks).
-- **Task Retry**: Automatically retry tasks that fail up to a configurable number of attempts.
-- **Error Handling**: Capture and handle task execution errors, store error details, and retry tasks if needed.
+- **Concurrent Execution**: Run tasks in parallel using Python threads.
+- **Persistence and Resumption**: 
+  - Automatically resume pending or failed tasks after interruptions.
+  - Store task statuses and results in SQLite (easily adaptable for Google Drive in Colab).
+- **Idempotency**: Re-running the same set of tasks will only process incomplete ones.
+- **Robust Error Handling**: 
+  - Capture and store execution errors.
+  - Configurable automatic retry for failed tasks.
+- **Execution Control**:
+  - Custom stop conditions for graceful termination.
+  - Configurable concurrency levels.
+- **Colab Compatibility**: Designed to work seamlessly in Colab notebooks, handling interruptions and restarts.
 
 ## Installation
 
-You can install **Messor** via pip after it’s been published to PyPI.
+Install from PyPI (recommended):
 
 ```bash
 pip install messor
 ```
 
-## Basic Usage
+For the latest development version, install from GitHub:
 
-Below is a simple example of how to use the `LocalThreadedExecutor` and `SQLiteMemory` to manage and execute tasks concurrently.
+```bash
+pip install git+https://github.com/jhaabh/messor.git
+```
 
-### 1. Define Tasks
-Each task needs to have a `get_id()` method to uniquely identify it and a `__call__()` method to execute the task logic.
+Messor supports Python 3.7+.
+
+## Quick Start
+
+Here's a simple example to get you started with Messor:
 
 ```python
-# Define your tasks
-class ExampleTask:
-    def __init__(self, task_id, url):
+from messor import LocalThreadedExecutor, SQLiteMemory, Task
+
+class ExampleTask(Task):
+    def __init__(self, task_id, data):
         self.task_id = task_id
-        self.url = url
+        self.data = data
 
     def get_id(self):
         return self.task_id
 
     def __call__(self):
         # Simulate task execution
-        return f"Processed {self.url}"
-```
+        return f"Processed {self.data}"
 
-### 2. Set up Memory for Task Persistence
-The memory stores task definitions, statuses, results, and errors. You can use `SQLiteMemory` to persist data to an SQLite database.
-
-```python
-from messor.sqlite_memory import SQLiteMemory
-
-# Set up SQLite memory for task persistence
+# Set up memory and tasks
 memory = SQLiteMemory(path="tasks.db")
+tasks = [ExampleTask(f"task_{i}", f"data_{i}") for i in range(5)]
+
+# Run the executor
+executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2)
+executor.run()
+
+# Check task statuses
+print(executor.status_summary())
 ```
 
-### 3. Run the Executor
-Use the `LocalThreadedExecutor` to manage the execution of tasks with concurrency. You can configure the maximum concurrency level, stop conditions, and task retry behavior.
+## Detailed Usage
+
+### Defining Tasks
+
+Tasks in Messor must implement two methods:
+
+1. `get_id()`: Returns a unique identifier for the task.
+2. `__call__()`: Contains the main logic of the task.
 
 ```python
-from messor.local_threaded_executor import LocalThreadedExecutor
+class MyTask(Task):
+    def __init__(self, task_id, data):
+        self.task_id = task_id
+        self.data = data
 
-# Define a list of tasks
-tasks = [
-    ExampleTask("task_1", "http://example.com"),
-    ExampleTask("task_2", "http://example.org"),
-    ExampleTask("task_3", "http://example.net"),
+    def get_id(self):
+        return self.task_id
+
+    def __call__(self):
+        # Your task logic here
+        result = process_data(self.data)
+        return result
+```
+
+### Memory Backends
+
+Messor supports different memory backends for task persistence. The `SQLiteMemory` is provided out of the box:
+
+```python
+from messor import SQLiteMemory
+
+memory = SQLiteMemory(path="my_tasks.db")
+```
+
+### Executor Configuration
+
+The `LocalThreadedExecutor` supports various configuration options:
+
+```python
+executor = LocalThreadedExecutor(
+    tasks=tasks,
+    memory=memory,
+    max_concurrency=4,  # Maximum number of concurrent tasks
+    retry=3,  # Number of retry attempts for failed tasks
+    stop_all_when=custom_stop_condition  # Function returning True to stop execution
+)
+```
+
+### Error Handling
+
+Messor automatically captures and stores task execution errors. Failed tasks are retried based on the `retry` parameter:
+
+```python
+# Retrieve failed tasks
+failed_tasks = memory.get_failed_tasks()
+
+# Inspect errors
+for task in failed_tasks:
+    print(f"Task {task.get_id()} failed with error: {task.error}")
+```
+
+## Colab Usage
+
+Messor is particularly useful in Colab environments. Here's an example of how to use Messor in a Colab notebook for web scraping tasks with persistent storage on Google Drive:
+
+```python
+!pip install git+https://github.com/jhaabh/messor.git
+
+# Step 1: Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+import requests
+from bs4 import BeautifulSoup
+from typing import Optional
+from messor import LocalThreadedExecutor, SQLiteMemory
+import os
+
+# Define a path inside Google Drive to store SQLite database
+sqlite_path = '/content/drive/MyDrive/messor_example/data.db'
+os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
+
+def fetch_url(url: str) -> Optional[str]:
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        print(f"An error occurred while fetching the URL: {e}")
+        return None
+
+def extract_content(html_content: str) -> dict:
+    soup = BeautifulSoup(html_content, 'html.parser')
+    # Example extraction, modify as needed
+    title = soup.find('h1').text if soup.find('h1') else "No title found"
+    paragraphs = [p.text for p in soup.find_all('p')]
+    return {"title": title, "paragraphs": paragraphs}
+
+class WebScrapingTask:
+    def __init__(self, url, task_id):
+        self.url = url
+        self.task_id = task_id
+
+    def get_id(self):
+        return self.task_id
+
+    def __call__(self):
+        content = fetch_url(self.url)
+        if content:
+            return extract_content(content)
+        else:
+            raise Exception(f"Failed to download {self.url}")
+
+# Example list of URLs to scrape
+urls_to_scrape = [
+    "http://example.com/page1",
+    "http://example.com/page2",
+    "http://example.com/page3",
 ]
 
-# Initialize the executor with task memory and run it
-executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2, retry=2)
+scraping_tasks = [WebScrapingTask(url, f"task_{i}") for i, url in enumerate(urls_to_scrape)]
+
+memory = SQLiteMemory(path=sqlite_path)
+
+# First run
+print("First run:")
+executor = LocalThreadedExecutor(tasks=scraping_tasks, memory=memory, max_concurrency=3)
 executor.run()
+print(executor.status_summary())
+
+# Simulating an interruption (in real scenario, this would be the notebook restarting)
+print("\nSimulating interruption and restarting...")
+
+# Second run - will only process incomplete tasks
+print("Second run (resuming):")
+executor = LocalThreadedExecutor(tasks=scraping_tasks, memory=memory, max_concurrency=3)
+executor.run()
+print(executor.status_summary())
 ```
 
-### 4. Status Reporting
-You can query the task statuses during or after execution to see which tasks are pending, completed, or failed.
+This example demonstrates persistence, idempotency, easy resumption, and concurrency control in a Colab environment.
+
+## LLM Prompting Example
+
+Messor can also be used for managing and executing LLM prompting tasks. Here's an example:
 
 ```python
-executor.status_summary()
-```
+!pip install git+https://github.com/jhaabh/messor.git
+!pip install openai
 
-### 5. Handling Failures and Resumption
-Messor automatically handles task failures by storing error information in memory. When the executor is run again, it will skip tasks marked as completed and retry those marked as failed or pending.
+from messor import LocalThreadedExecutor, SQLiteMemory
+import openai
+import os
 
-```python
-# Re-run the executor to resume any pending or failed tasks
+# Set up OpenAI API (make sure to keep your API key secure)
+openai.api_key = 'your-api-key-here'
+
+class LLMPromptTask:
+    def __init__(self, prompt, task_id):
+        self.prompt = prompt
+        self.task_id = task_id
+
+    def get_id(self):
+        return self.task_id
+
+    def __call__(self):
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-002",
+                prompt=self.prompt,
+                max_tokens=150
+            )
+            return response.choices[0].text.strip()
+        except Exception as e:
+            raise Exception(f"Failed to get LLM response: {str(e)}")
+
+# Example prompts
+prompts = [
+    "Explain the concept of machine learning in simple terms.",
+    "What are the main differences between Python and JavaScript?",
+    "Describe the process of photosynthesis briefly.",
+]
+
+llm_tasks = [LLMPromptTask(prompt, f"task_{i}") for i, prompt in enumerate(prompts)]
+
+# Set up SQLite memory (adjust path as needed)
+sqlite_path = 'llm_tasks.db'
+memory = SQLiteMemory(path=sqlite_path)
+
+# Run tasks
+executor = LocalThreadedExecutor(tasks=llm_tasks, memory=memory, max_concurrency=2)
 executor.run()
+print(executor.status_summary())
+
+# Retrieve and print results
+for task in llm_tasks:
+    result = memory.get_task_result(task.get_id())
+    if result:
+        print(f"Task {task.get_id()}:")
+        print(result)
+        print("---")
 ```
+
+This example showcases how Messor can manage LLM prompting tasks with concurrency and persistence.
 
 ## Advanced Features
 
-### Stop Conditions
-You can define custom stop conditions for halting execution based on external events (e.g., rate limits, API blocks). The stop condition is checked after each task is completed, but tasks that have already started will continue to run.
+### Custom Stop Conditions
+
+Implement custom stop conditions to halt execution based on specific criteria:
 
 ```python
-# Stop condition that halts execution after two tasks are processed
-executed_tasks = 0
-def stop_after_two_tasks():
-    global executed_tasks
-    return executed_tasks >= 2
+def rate_limit_reached():
+    # Your logic to check if rate limit is reached
+    return requests_made > MAX_REQUESTS
 
-class ExampleTaskWithCount(ExampleTask):
-    def __call__(self):
-        global executed_tasks
-        executed_tasks += 1
-        return super().__call__()
-
-# Use the stop condition in the executor
-executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2, stop_all_when=stop_after_two_tasks)
-executor.run()
+executor = LocalThreadedExecutor(tasks=tasks, memory=memory, stop_all_when=rate_limit_reached)
 ```
 
 ### Custom Memory Backends
-You can create custom memory backends by implementing the `Memory` interface, allowing you to store task data in other systems like Firebase, AWS S3, etc.
+
+Create custom memory backends for specific storage needs:
 
 ```python
-class CustomMemory:
+class MyCustomMemory(Memory):
     def store_tasks(self, tasks):
         # Custom storage logic
-        pass
 
     def update_task_statuses(self, statuses):
         # Custom status update logic
-        pass
 
     def get_task_status(self, task_id):
         # Retrieve task status
-        pass
 
     def get_completed_tasks(self):
         # Retrieve completed tasks
-        pass
 
-# Use CustomMemory in the executor
-custom_memory = CustomMemory()
-executor = LocalThreadedExecutor(tasks=tasks, memory=custom_memory, max_concurrency=4)
-executor.run()
+custom_memory = MyCustomMemory()
+executor = LocalThreadedExecutor(tasks=tasks, memory=custom_memory)
 ```
 
-## Running Tests
+## Performance Considerations
 
-To run the test suite, install the necessary dependencies and run pytest:
+- Messor is designed for single-computer use, with a focus on Colab notebooks.
+- Current implementation allows only one thread to write to SQLite at a time, which may limit concurrency for write-heavy workloads.
+- Typical concurrency of 5-10 tasks can be achieved on a Colab notebook, but this may vary based on the specific tasks and available resources.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+Please make sure to update tests as appropriate and adhere to the [Code of Conduct](https://github.com/jhaabh/messor/blob/main/CODE_OF_CONDUCT.md).
+
+## Testing
+
+Run the test suite using pytest:
 
 ```bash
 pip install pytest
 pytest
 ```
 
-The test suite is divided into multiple files that focus on specific parts of the framework, including task execution, concurrency, resumption, and error handling.
+## TODO
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a pull request or open an issue to report bugs or request features.
-
-### Development Setup
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/yourusername/messor.git
-cd messor
-```
-
-2. Create a virtual environment:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows use: .\venv\Scripts\activate
-```
-
-3. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Run tests to ensure everything is working:
-
-```bash
-pytest
-```
+- Implement thorough performance benchmarking, especially on Colab environments
+- Optimize SQLite write operations for better concurrency
+- Explore options for distributed computing in future versions
+- Expand documentation with more real-world examples
+- Implement additional memory backends (e.g., Redis, MongoDB)
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/jhaabh/messor/blob/main/LICENSE) file for details.
+
+## Contact
+
+Jhaabh - [@jhaabh](https://github.com/jhaabh)
+
+Project Link: [https://github.com/jhaabh/messor](https://github.com/jhaabh/messor)
 
 ---
 
-Happy Harvesting with **Messor**! 🌾
+Remember to use Messor responsibly, respecting website terms of service and API rate limits. Happy harvesting with Messor! 🌾
