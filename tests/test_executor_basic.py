@@ -1,5 +1,5 @@
 import pytest
-from messor import LocalThreadedExecutor  # Assuming this is the file with the executor implementation
+from kofu import LocalThreadedExecutor  # Assuming this is the file with the executor implementation
 
 # Task definition for testing
 class ExampleTask:
@@ -20,7 +20,7 @@ def always_false():
 # Fixture to provide a fresh SQLiteMemory for each test
 @pytest.fixture
 def sqlite_memory():
-    from messor.memory import SQLiteMemory
+    from kofu.memory import SQLiteMemory
     return SQLiteMemory(":memory:")  # Use in-memory SQLite for testing
 
 # Test single task execution

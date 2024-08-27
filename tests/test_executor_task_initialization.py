@@ -1,5 +1,5 @@
 import pytest
-from messor import LocalThreadedExecutor, SQLiteMemory
+from kofu import LocalThreadedExecutor, SQLiteMemory
 
 # Mock task for testing
 class MockTask:

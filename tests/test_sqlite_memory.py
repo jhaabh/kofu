@@ -1,7 +1,6 @@
 import pytest
-import sqlite3
 import threading
-from messor.memory import SQLiteMemory  # Assuming the SQLiteMemory implementation is in sqlite_memory.py
+from kofu.memory import SQLiteMemory  # Assuming the SQLiteMemory implementation is in sqlite_memory.py
 
 # Test setup: fixture to create a fresh SQLiteMemory instance
 @pytest.fixture

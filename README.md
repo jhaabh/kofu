@@ -1,10 +1,10 @@
-# Messor
+# Kofu
 
-[![PyPI version](https://badge.fury.io/py/messor.svg)](https://badge.fury.io/py/messor)
-[![Python Versions](https://img.shields.io/pypi/pyversions/messor.svg)](https://pypi.org/project/messor/)
+[![PyPI version](https://badge.fury.io/py/kofu.svg)](https://badge.fury.io/py/kofu)
+[![Python Versions](https://img.shields.io/pypi/pyversions/kofu.svg)](https://pypi.org/project/kofu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Messor** (Latin for "Harvester") is a Python framework for managing and executing concurrent tasks with built-in persistence. It's designed for single-computer environments, particularly Colab notebooks, focusing on I/O-heavy operations such as web scraping and LLM-based workflows.
+**Kofu** (Japanese for "Miner") is a Python framework for managing and executing concurrent tasks with built-in persistence. It's designed for single-computer environments, particularly Colab notebooks, focusing on I/O-heavy operations such as web scraping and LLM-based workflows.
 
 ## Table of Contents
 - [Features](#features)
@@ -41,23 +41,23 @@
 Install from PyPI (recommended):
 
 ```bash
-pip install messor
+pip install kofu
 ```
 
 For the latest development version, install from GitHub:
 
 ```bash
-pip install git+https://github.com/jhaabh/messor.git
+pip install git+https://github.com/jhaabh/kofu.git
 ```
 
-Messor supports Python 3.7+.
+Kofu supports Python 3.7+.
 
 ## Quick Start
 
-Here's a simple example to get you started with Messor:
+Here's a simple example to get you started with Kofu:
 
 ```python
-from messor import LocalThreadedExecutor, SQLiteMemory, Task
+from kofu import LocalThreadedExecutor, SQLiteMemory, Task
 
 class ExampleTask(Task):
     def __init__(self, task_id, data):
@@ -87,7 +87,7 @@ print(executor.status_summary())
 
 ### Defining Tasks
 
-Tasks in Messor must implement two methods:
+Tasks in Kofu must implement two methods:
 
 1. `get_id()`: Returns a unique identifier for the task.
 2. `__call__()`: Contains the main logic of the task.
@@ -109,10 +109,10 @@ class MyTask(Task):
 
 ### Memory Backends
 
-Messor supports different memory backends for task persistence. The `SQLiteMemory` is provided out of the box:
+Kofu supports different memory backends for task persistence. The `SQLiteMemory` is provided out of the box:
 
 ```python
-from messor import SQLiteMemory
+from kofu import SQLiteMemory
 
 memory = SQLiteMemory(path="my_tasks.db")
 ```
@@ -133,7 +133,7 @@ executor = LocalThreadedExecutor(
 
 ### Error Handling
 
-Messor automatically captures and stores task execution errors. Failed tasks are retried based on the `retry` parameter:
+Kofu automatically captures and stores task execution errors. Failed tasks are retried based on the `retry` parameter:
 
 ```python
 # Retrieve failed tasks
@@ -146,10 +146,10 @@ for task in failed_tasks:
 
 ## Colab Usage
 
-Messor is particularly useful in Colab environments. Here's an example of how to use Messor in a Colab notebook for web scraping tasks with persistent storage on Google Drive:
+Kofu is particularly useful in Colab environments. Here's an example of how to use kofu in a Colab notebook for web scraping tasks with persistent storage on Google Drive:
 
 ```python
-!pip install git+https://github.com/jhaabh/messor.git
+!pip install git+https://github.com/jhaabh/kofu.git
 
 # Step 1: Mount Google Drive
 from google.colab import drive
@@ -158,11 +158,11 @@ drive.mount('/content/drive')
 import requests
 from bs4 import BeautifulSoup
 from typing import Optional
-from messor import LocalThreadedExecutor, SQLiteMemory
+from kofu import LocalThreadedExecutor, SQLiteMemory
 import os
 
 # Define a path inside Google Drive to store SQLite database
-sqlite_path = '/content/drive/MyDrive/messor_example/data.db'
+sqlite_path = '/content/drive/MyDrive/kofu_example/data.db'
 os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
 
 def fetch_url(url: str) -> Optional[str]:
@@ -227,13 +227,13 @@ This example demonstrates persistence, idempotency, easy resumption, and concurr
 
 ## LLM Prompting Example
 
-Messor can also be used for managing and executing LLM prompting tasks. Here's an example:
+Kofu can also be used for managing and executing LLM prompting tasks. Here's an example:
 
 ```python
-!pip install git+https://github.com/jhaabh/messor.git
+!pip install git+https://github.com/jhaabh/kofu.git
 !pip install openai
 
-from messor import LocalThreadedExecutor, SQLiteMemory
+from kofu import LocalThreadedExecutor, SQLiteMemory
 import openai
 import os
 
@@ -286,7 +286,7 @@ for task in llm_tasks:
         print("---")
 ```
 
-This example showcases how Messor can manage LLM prompting tasks with concurrency and persistence.
+This example showcases how Kofu can manage LLM prompting tasks with concurrency and persistence.
 
 ## Advanced Features
 
@@ -326,7 +326,7 @@ executor = LocalThreadedExecutor(tasks=tasks, memory=custom_memory)
 
 ## Performance Considerations
 
-- Messor is designed for single-computer use, with a focus on Colab notebooks.
+- Kofu is designed for single-computer use, with a focus on Colab notebooks.
 - Current implementation allows only one thread to write to SQLite at a time, which may limit concurrency for write-heavy workloads.
 - Typical concurrency of 5-10 tasks can be achieved on a Colab notebook, but this may vary based on the specific tasks and available resources.
 
@@ -340,7 +340,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-Please make sure to update tests as appropriate and adhere to the [Code of Conduct](https://github.com/jhaabh/messor/blob/main/CODE_OF_CONDUCT.md).
+Please make sure to update tests as appropriate and adhere to the [Code of Conduct](https://github.com/jhaabh/kofu/blob/main/CODE_OF_CONDUCT.md).
 
 ## Testing
 
@@ -361,14 +361,14 @@ pytest
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/jhaabh/messor/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/jhaabh/kofu/blob/main/LICENSE) file for details.
 
 ## Contact
 
 Jhaabh - [@jhaabh](https://github.com/jhaabh)
 
-Project Link: [https://github.com/jhaabh/messor](https://github.com/jhaabh/messor)
+Project Link: [https://github.com/jhaabh/kofu](https://github.com/jhaabh/kofu)
 
 ---
 
-Remember to use Messor responsibly, respecting website terms of service and API rate limits. Happy harvesting with Messor! 🌾
+Happy mining with Kofu! ⛏️

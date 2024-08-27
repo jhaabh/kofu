@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='messor',  # Project name
+    name='kofu',  # Project name
     version='0.1.0',
     description='An execution framework for i/o heavy task with memory persistence and concurrency',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     author='Abhishek Jha',
     author_email='contact@jhaabhi.com',
-    url='https://github.com/jhaabh/messor',  # Your GitHub repo link
-    packages=find_packages(),  # Automatically finds all packages in the messor directory
+    url='https://github.com/jhaabh/kofu',  # Your GitHub repo link
+    packages=find_packages(),  # Automatically finds all packages in the kofu directory
     include_package_data=True,  # Includes additional files like README and LICENSE
     install_requires=[
         'tqdm'
