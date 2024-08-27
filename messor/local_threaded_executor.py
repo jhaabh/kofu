@@ -71,4 +71,3 @@ class LocalThreadedExecutor:
         if self._stopped:
             raise RuntimeError("Execution was stopped by an external condition.")
         return task()
-
