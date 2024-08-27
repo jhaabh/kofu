@@ -2,10 +2,12 @@ import sqlite3
 import json
 from typing import List, Dict, Optional, Tuple
 from .memory_interface import Memory
+from threading import Lock
 
 class SQLiteMemory(Memory):
     def __init__(self, path: str):
-        self.conn = sqlite3.connect(path)
+        self.conn = sqlite3.connect(path, check_same_thread=False)
+        self.lock = Lock()  # Use a lock to ensure thread safety for write operations
         self._setup_db()
 
     def _setup_db(self):
@@ -39,21 +41,41 @@ class SQLiteMemory(Memory):
             ''')
 
     def store_tasks(self, tasks: List[Tuple[str, dict]]):
-        with self.conn:
-            self.conn.executemany('''
-                INSERT OR IGNORE INTO task_definition (task_id, task_data) VALUES (?, ?)
-            ''', [(task_id, json.dumps(task_data)) for task_id, task_data in tasks])
+        serialized_tasks = []
+        
+        # Validate task data and prepare it for insertion
+        for task_id, task_data in tasks:
+            try:
+                json_data = json.dumps(task_data)  # Ensure it's JSON serializable
+            except (TypeError, ValueError) as e:
+                raise TypeError(f"Task data for task {task_id} is not JSON serializable: {e}")
             
-            self.conn.executemany('''
-                INSERT OR IGNORE INTO task_status (task_id, status) VALUES (?, 'pending')
-            ''', [(task_id,) for task_id, _ in tasks])
+            serialized_tasks.append((task_id, json_data))
+
+        # Use executemany for batch insertion
+        with self.conn, self.lock:
+            self.conn.executemany('INSERT OR IGNORE INTO task_definition (task_id, task_data) VALUES (?, ?)', serialized_tasks)
+            self.conn.executemany('INSERT OR IGNORE INTO task_status (task_id, status) VALUES (?, ?)', [(task_id, 'pending') for task_id, _ in tasks])
 
     def update_task_statuses(self, statuses: List[Tuple[str, str, Optional[dict], Optional[str]]]):
-        with self.conn:
+        with self.conn, self.lock:
+            # Extract task_ids from the statuses list
+            task_ids = [task_id for task_id, _, _, _ in statuses]
+            
+            # Check if all task IDs exist in a single query
+            cursor = self.conn.execute('SELECT task_id FROM task_status WHERE task_id IN ({})'.format(','.join('?'*len(task_ids))), task_ids)
+            existing_task_ids = {row[0] for row in cursor.fetchall()}
+
+            # Raise KeyError if any task is missing
+            for task_id in task_ids:
+                if task_id not in existing_task_ids:
+                    raise KeyError(f"Task {task_id} does not exist")
+
             self.conn.executemany('''
                 UPDATE task_status SET status = ? WHERE task_id = ?
             ''', [(status, task_id) for task_id, status, _, _ in statuses])
 
+            # TODO: Make this more optimized
             for task_id, _, result, error in statuses:
                 if result:
                     self.conn.execute('''
@@ -66,7 +88,10 @@ class SQLiteMemory(Memory):
 
     def get_task_status(self, task_id: str) -> str:
         cursor = self.conn.execute('SELECT status FROM task_status WHERE task_id = ?', (task_id,))
-        return cursor.fetchone()[0]
+        result = cursor.fetchone()
+        if result is None:
+            raise KeyError(f"Task with ID {task_id} not found in the database.")
+        return result[0]
 
     def get_pending_tasks(self) -> List[str]:
         cursor = self.conn.execute('SELECT task_id FROM task_status WHERE status = ?', ('pending',))
@@ -91,7 +116,7 @@ class SQLiteMemory(Memory):
         return json.loads(result[0]) if result else None
 
     def clear(self):
-        with self.conn:
+        with self.conn, self.lock:
             self.conn.execute('DELETE FROM task_definition')
             self.conn.execute('DELETE FROM task_status')
             self.conn.execute('DELETE FROM task_result')

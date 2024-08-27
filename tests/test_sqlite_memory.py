@@ -144,7 +144,7 @@ def test_clear_specific_tasks(sqlite_memory):
     sqlite_memory.store_tasks(tasks)
     sqlite_memory.clear_tasks(["task_1"])
     assert sqlite_memory.get_task_status("task_2") == "pending"
-    with pytest.raises(TypeError):  # Task 1 should be cleared
+    with pytest.raises(KeyError):  # Task 1 should be cleared
         sqlite_memory.get_task_status("task_1")
 
 # Data Dumping
@@ -190,7 +190,7 @@ def test_store_task_with_invalid_data(sqlite_memory):
         sqlite_memory.store_tasks([("task_1", None)])  # Invalid task data
 
 def test_update_nonexistent_task(sqlite_memory):
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(KeyError):
         sqlite_memory.update_task_statuses([("task_999", "completed", {"html": "<html>...</html>"}, None)])
 
 def test_clear_nonexistent_tasks(sqlite_memory):
@@ -198,3 +198,11 @@ def test_clear_nonexistent_tasks(sqlite_memory):
     sqlite_memory.store_tasks(tasks)
     sqlite_memory.clear_tasks(["task_999"])  # Non-existent task should not cause issues
     assert sqlite_memory.get_task_status("task_1") == "pending"
+
+def test_get_task_status_not_found(sqlite_memory):
+    with pytest.raises(KeyError, match="Task with ID task_999 not found"):
+        sqlite_memory.get_task_status("task_999")
+
+def test_store_task_with_invalid_data(sqlite_memory):
+    with pytest.raises(TypeError, match="Task data for task task_1 is not JSON serializable"):
+        sqlite_memory.store_tasks([("task_1", set([1, 2, 3]))])  # Sets are not JSON serializable
