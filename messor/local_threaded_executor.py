@@ -45,8 +45,18 @@ class LocalThreadedExecutor:
 
         # Thread pool execution
         with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
-            future_to_task = {executor.submit(self._execute_task, task, self.retry): task for task in tasks_to_run}
+            future_to_task = {}
+            # Submit tasks to the executor one by one, checking stop condition before submitting
+            for task in tasks_to_run:
+                if self._stopped or (self.stop_all_when and self.stop_all_when()):
+                    print(f"Stop condition met. Halting task submission.")
+                    self._stopped = True
+                    break
 
+                future = executor.submit(self._execute_task, task, self.retry)
+                future_to_task[future] = task
+
+                        # Collect results as tasks finish and update memory
             for future in as_completed(future_to_task):
                 task = future_to_task[future]
                 try:
@@ -55,7 +65,7 @@ class LocalThreadedExecutor:
                 except Exception as e:
                     self.memory.update_task_statuses([(task.get_id(), 'failed', None, str(e))])
 
-                # Check if the stop condition is met (e.g., rate-limiting, API block)
+                # Check the stop condition after each task is processed
                 if self.stop_all_when and self.stop_all_when():
                     print(f"Emergency stop condition met. Halting execution.")
                     self._stopped = True
