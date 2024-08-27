@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional
 
 class LocalThreadedExecutor:
-    def __init__(self, tasks: List, memory, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None):
+    def __init__(self, tasks: List, memory, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None, retry: int = 1):
         """
         Initialize the LocalThreadedExecutor.
 
@@ -16,6 +16,7 @@ class LocalThreadedExecutor:
         self.max_concurrency = max_concurrency
         self.stop_all_when = stop_all_when
         self._stopped = False
+        self.retry = retry  # Add retry parameter
 
     def status_summary(self):
         """
@@ -44,7 +45,7 @@ class LocalThreadedExecutor:
 
         # Thread pool execution
         with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
-            future_to_task = {executor.submit(self._execute_task, task): task for task in tasks_to_run}
+            future_to_task = {executor.submit(self._execute_task, task, self.retry): task for task in tasks_to_run}
 
             for future in as_completed(future_to_task):
                 task = future_to_task[future]
@@ -63,11 +64,21 @@ class LocalThreadedExecutor:
         # Print status summary at the end
         self.status_summary()
 
-    def _execute_task(self, task):
+    def _execute_task(self, task, retries_left):
         """
         Execute the given task and return its result.
         This function will be executed by each thread in the thread pool.
         """
         if self._stopped:
             raise RuntimeError("Execution was stopped by an external condition.")
-        return task()
+        
+        try:
+            return task()  # Try to execute the task
+        except Exception as e:
+            if retries_left >= 1:
+                print(f"Retrying task {task.get_id()}... Attempts left: {retries_left-1}")
+                return self._execute_task(task, retries_left - 1)
+            else:
+                raise e  # Raise the error if no retries are left
+
+        # return task()
