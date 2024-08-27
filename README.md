@@ -8,6 +8,7 @@
 - **Task Resumption**: Automatically resume pending or failed tasks after interruptions or crashes.
 - **Memory Persistence**: Store task statuses and results in various backends like SQLite or custom memory systems.
 - **Stop Conditions**: Gracefully stop execution based on custom conditions (e.g., rate-limiting, API blocks).
+- **Task Retry**: Automatically retry tasks that fail up to a configurable number of attempts.
 - **Error Handling**: Capture and handle task execution errors, store error details, and retry tasks if needed.
 
 ## Installation
@@ -51,7 +52,7 @@ memory = SQLiteMemory(path="tasks.db")
 ```
 
 ### 3. Run the Executor
-Use the `LocalThreadedExecutor` to manage the execution of tasks with concurrency. You can configure the maximum concurrency level and stop conditions.
+Use the `LocalThreadedExecutor` to manage the execution of tasks with concurrency. You can configure the maximum concurrency level, stop conditions, and task retry behavior.
 
 ```python
 from messor.local_threaded_executor import LocalThreadedExecutor
@@ -64,7 +65,7 @@ tasks = [
 ]
 
 # Initialize the executor with task memory and run it
-executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2)
+executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2, retry=2)
 executor.run()
 ```
 
@@ -86,7 +87,7 @@ executor.run()
 ## Advanced Features
 
 ### Stop Conditions
-You can define custom stop conditions for halting execution based on external events (e.g., rate limits, API blocks). For example:
+You can define custom stop conditions for halting execution based on external events (e.g., rate limits, API blocks). The stop condition is checked after each task is completed, but tasks that have already started will continue to run.
 
 ```python
 # Stop condition that halts execution after two tasks are processed
@@ -183,4 +184,3 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 ---
 
 Happy Harvesting with **Messor**! 🌾
-This `README.md` is designed to be user-friendly and provide enough detail to guide users through installation, setup, and basic usage of the Messor framework. Let me know if this works for you or if you'd like to make any further adjustments!
