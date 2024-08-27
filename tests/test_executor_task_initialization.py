@@ -72,3 +72,50 @@ def test_all_tasks_completed(sqlite_memory):
 
     # Ensure that all tasks are marked as completed
     assert len(sqlite_memory.get_completed_tasks()) == 3
+
+# Test Case: LocalThreadedExecutor uses SQLiteMemory by default when no memory is provided
+def test_local_threaded_executor_uses_sqlite_memory_by_default(tmp_path):
+    # Create tasks
+    tasks = [MockTask(f"task_{i}") for i in range(3)]
+    
+    # Define a path for SQLiteMemory
+    sqlite_path = tmp_path / "test_tasks.db"
+    
+    # Ensure no explicit memory is provided, only the path
+    executor = LocalThreadedExecutor(tasks=tasks, path=str(sqlite_path), max_concurrency=2)
+    
+    # Run the executor
+    executor.run()
+    
+    # Check that tasks are completed and persisted in SQLite
+    assert executor.memory.get_task_status("task_0") == "completed"
+    assert executor.memory.get_task_status("task_1") == "completed"
+    assert executor.memory.get_task_status("task_2") == "completed"
+
+# Test Case: LocalThreadedExecutor raises an error when neither path nor memory is provided
+def test_local_threaded_executor_raises_error_without_path_or_memory():
+    # Create tasks
+    tasks = [MockTask(f"task_{i}") for i in range(3)]
+    
+    # Expect an error when neither memory nor path is provided
+    with pytest.raises(ValueError, match="Either a memory instance or a path must be provided"):
+        LocalThreadedExecutor(tasks=tasks, max_concurrency=2)
+
+# Test Case: LocalThreadedExecutor works with custom memory (SQLiteMemory provided)
+def test_local_threaded_executor_works_with_custom_memory():
+    # Create tasks
+    tasks = [MockTask(f"task_{i}") for i in range(3)]
+    
+    # Use custom SQLiteMemory
+    memory = SQLiteMemory(":memory:")  # In-memory SQLite for testing
+    
+    # Ensure custom memory is used instead of default
+    executor = LocalThreadedExecutor(tasks=tasks, memory=memory, max_concurrency=2)
+    
+    # Run the executor
+    executor.run()
+    
+    # Check that tasks are completed and stored in the custom memory
+    assert memory.get_task_status("task_0") == "completed"
+    assert memory.get_task_status("task_1") == "completed"
+    assert memory.get_task_status("task_2") == "completed"

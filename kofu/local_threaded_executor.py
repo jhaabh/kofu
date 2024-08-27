@@ -1,23 +1,34 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional
 from tqdm import tqdm  # Import tqdm for progress bar
+import os
+from kofu.memory.sqlite_memory import SQLiteMemory  # Import SQLiteMemory
 
 class LocalThreadedExecutor:
-    def __init__(self, tasks: List, memory, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None, retry: int = 1):
+    def __init__(self, tasks: List, memory=None, path: Optional[str] = None, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None, retry: int = 1):
         """
         Initialize the LocalThreadedExecutor.
 
         :param tasks: List of task instances that can be executed.
-        :param memory: Memory object (e.g., SQLiteMemory) to manage task states and results.
+        :param memory: Memory object (e.g., SQLiteMemory) to manage task states and results. If not provided, SQLiteMemory is used.
+        :param path: Optional path for SQLiteMemory storage. Required if memory is not provided.
         :param max_concurrency: Maximum number of threads to run concurrently.
         :param stop_all_when: Function that returns True if execution should stop (e.g., rate limiting, API blocks).
+        :param retry: Number of retries for each task in case of failure.
         """
         self.tasks = tasks
         self.memory = memory
+        self.path = path
         self.max_concurrency = max_concurrency
         self.stop_all_when = stop_all_when
         self._stopped = False
         self.retry = retry  # Add retry parameter
+
+        # Ensure memory is either provided or initialized
+        if self.memory is None:
+            if self.path is None:
+                raise ValueError("Either a memory instance or a path must be provided")
+            self.memory = SQLiteMemory(path=self.path)
 
     def status_summary(self):
         """
