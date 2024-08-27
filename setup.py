@@ -6,12 +6,14 @@ setup(
     description='An execution framework for i/o heavy task with memory persistence and concurrency',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    author='Your Name',
+    author='Abhishek Jha',
     author_email='contact@jhaabhi.com',
     url='https://github.com/jhaabh/messor',  # Your GitHub repo link
     packages=find_packages(),  # Automatically finds all packages in the messor directory
     include_package_data=True,  # Includes additional files like README and LICENSE
-    install_requires=[],  # Add external dependencies here, e.g., 'requests'
+    install_requires=[
+        'tqdm'
+    ],  # Add external dependencies here, e.g., 'requests'
     extras_require={
         'dev': [
             'pytest>=6.0',  # Adds pytest as a development dependency

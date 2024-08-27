@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, List, Optional
+from tqdm import tqdm  # Import tqdm for progress bar
 
 class LocalThreadedExecutor:
     def __init__(self, tasks: List, memory, max_concurrency: int = 4, stop_all_when: Optional[Callable] = None, retry: int = 1):
@@ -46,33 +47,45 @@ class LocalThreadedExecutor:
             print("All tasks are already completed.")
             return
 
-        # Thread pool execution
-        with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
-            future_to_task = {}
-            # Submit tasks to the executor one by one, checking stop condition before submitting
-            for task in tasks_to_run:
-                if self._stopped or (self.stop_all_when and self.stop_all_when()):
-                    print(f"Stop condition met. Halting task submission.")
-                    self._stopped = True
-                    break
+        # Total task count for progress bar
+        total_tasks = len(self.tasks)
+        completed_tasks = len(self.memory.get_completed_tasks())
+        failed_tasks = len(self.memory.get_failed_tasks())
 
-                future = executor.submit(self._execute_task, task, self.retry)
-                future_to_task[future] = task
+        # Initialize progress bar
+        with tqdm(total=total_tasks, desc="Task Progress", unit="task", initial=completed_tasks + failed_tasks) as pbar:
+            # Thread pool execution
+            with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
+                future_to_task = {}
+                # Submit tasks to the executor one by one, checking stop condition before submitting
+                for task in tasks_to_run:
+                    if self._stopped or (self.stop_all_when and self.stop_all_when()):
+                        print(f"Stop condition met. Halting task submission.")
+                        self._stopped = True
+                        break
 
-                        # Collect results as tasks finish and update memory
-            for future in as_completed(future_to_task):
-                task = future_to_task[future]
-                try:
-                    result = future.result()  # This will raise an exception if the task failed
-                    self.memory.update_task_statuses([(task.get_id(), 'completed', result, None)])
-                except Exception as e:
-                    self.memory.update_task_statuses([(task.get_id(), 'failed', None, str(e))])
+                    future = executor.submit(self._execute_task, task, self.retry)
+                    future_to_task[future] = task
 
-                # Check the stop condition after each task is processed
-                if self.stop_all_when and self.stop_all_when():
-                    print(f"Emergency stop condition met. Halting execution.")
-                    self._stopped = True
-                    break
+                # Collect results as tasks finish and update memory
+                for future in as_completed(future_to_task):
+                    task = future_to_task[future]
+                    try:
+                        result = future.result()  # This will raise an exception if the task failed
+                        self.memory.update_task_statuses([(task.get_id(), 'completed', result, None)])
+                        completed_tasks += 1
+                    except Exception as e:
+                        self.memory.update_task_statuses([(task.get_id(), 'failed', None, str(e))])
+                        failed_tasks += 1
+
+                    # Update progress bar
+                    pbar.update(1)
+
+                    # Check the stop condition after each task is processed
+                    if self.stop_all_when and self.stop_all_when():
+                        print(f"Emergency stop condition met. Halting execution.")
+                        self._stopped = True
+                        break
 
         # Print status summary at the end
         self.status_summary()
